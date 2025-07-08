@@ -469,7 +469,7 @@
             } else {
                 selectMode('desktop');
             }
-            checkSavedGame();
+            // Auto-save/load functionality removed. Game starts fresh every time.
         });
 
         // Sets display mode (mobile/desktop) and shows setup screen
@@ -493,7 +493,7 @@
         window.setAICountAndShowDifficulty = setAICountAndShowDifficulty;
 
         // Starts the game, either new or from a saved state
-        async function startGame(aiCount, difficulty, savedGame = null) {
+        async function startGame(aiCount, difficulty) {
             // Initialize audio on first user interaction
             if (!audioReady) {
                 await Tone.start();
@@ -546,36 +546,30 @@
                 }
             });
 
-            // Load saved game or create new players
-            if (savedGame) {
-                players = savedGame.players;
-                currentPlayerIndex = savedGame.currentPlayerIndex;
-                diceRollCount = savedGame.diceRollCount || 0;
-                difficultyLevel = savedGame.difficultyLevel || 'intermediate';
-            } else {
-                difficultyLevel = difficulty;
-                const playerName = document.getElementById('player-name').value || '玩家';
-                const playerEmoji = document.getElementById('emoji-selector').value;
-                
-                // Easter egg for starting money
-                let startMoney = 1500;
-                if (playerName === '$$$') {
-                    startMoney = 100000;
-                }
-
-                let allEmojis = ["✂️", "🧵", "🧷", "👕", "👖", "👔", "🤖", "👾", "👽"];
-                let aiEmojis = allEmojis.filter(e => e !== playerEmoji);
-                
-                players = [];
-                const playerNames = [playerName, 'HSD (AI)', 'SBS (AI)', 'IDEAL (AI)'];
-                const playerColors = ['#e53e3e', '#4299e1', '#48bb78', '#ecc94b'];
-                
-                players.push({ id: 0, name: playerNames[0], isAI: false, money: startMoney, position: 0, properties: [], inJail: false, jailTurns: 0, token: playerEmoji, color: playerColors[0], isBankrupt: false, getOutOfJailFreeCards: 0, goSalaryCollectedThisTurn: false });
-                
-                for (let i = 0; i < aiCount; i++) {
-                    players.push({ id: i + 1, name: playerNames[i + 1], isAI: true, money: 1500, position: 0, properties: [], inJail: false, jailTurns: 0, token: aiEmojis[i], color: playerColors[i+1], isBankrupt: false, getOutOfJailFreeCards: 0, goSalaryCollectedThisTurn: false });
-                }
+            // Create new players
+            difficultyLevel = difficulty;
+            const playerName = document.getElementById('player-name').value || '玩家';
+            const playerEmoji = document.getElementById('emoji-selector').value;
+            
+            // Easter egg for starting money
+            let startMoney = 1500;
+            if (playerName === '$$$') {
+                startMoney = 100000;
             }
+
+            let allEmojis = ["✂️", "🧵", "🧷", "👕", "👖", "👔", "🤖", "👾", "👽"];
+            let aiEmojis = allEmojis.filter(e => e !== playerEmoji);
+            
+            players = [];
+            const playerNames = [playerName, 'HSD (AI)', 'SBS (AI)', 'IDEAL (AI)'];
+            const playerColors = ['#e53e3e', '#4299e1', '#48bb78', '#ecc94b'];
+            
+            players.push({ id: 0, name: playerNames[0], isAI: false, money: startMoney, position: 0, properties: [], inJail: false, jailTurns: 0, token: playerEmoji, color: playerColors[0], isBankrupt: false, getOutOfJailFreeCards: 0, goSalaryCollectedThisTurn: false });
+            
+            for (let i = 0; i < aiCount; i++) {
+                players.push({ id: i + 1, name: playerNames[i + 1], isAI: true, money: 1500, position: 0, properties: [], inJail: false, jailTurns: 0, token: aiEmojis[i], color: playerColors[i+1], isBankrupt: false, getOutOfJailFreeCards: 0, goSalaryCollectedThisTurn: false });
+            }
+            
 
             // Hide setup and show game
             document.getElementById('setup-screen').style.display = 'none';
@@ -675,9 +669,7 @@
 
             if (currentPlayer.isAI) {
                 await sleep(500);
-                if (difficultyLevel !== 'easy') {
-                    await manageAIProperties(currentPlayer);
-                }
+                await manageAIProperties(currentPlayer);
                 await evaluateAITrades(currentPlayer);
                 aiTurn();
             }
@@ -702,7 +694,6 @@
 
         function aiTurn() {
             diceRollCount++; 
-            saveGame();
             const d1 = Math.floor(Math.random() * 6) + 1;
             const d2 = Math.floor(Math.random() * 6) + 1;
             animateDice(d1, d2, () => movePlayer(d1 + d2));
@@ -1139,7 +1130,6 @@
             gameActive = false;
             if (backgroundMusic) backgroundMusic.stop();
             if (activePlayers.length === 1 && !activePlayers[0].isAI) { triggerWin(); } else { triggerLose(); }
-            localStorage.removeItem('garmentMonopolySave');
         }
         
         function animateDice(d1, d2, callback) {
@@ -1151,7 +1141,6 @@
                 if (++count > 10) { clearInterval(interval); drawDice(diceContainer[0], d1); drawDice(diceContainer[1], d2); setTimeout(callback, 250); }
             }, 50);
             diceRollCount++;
-            saveGame();
         }
         
         function drawDice(container, value) {
@@ -1523,42 +1512,7 @@
             }
         }
 
-        // --- Save/Load Game ---
-        function saveGame() {
-            if (diceRollCount % 5 === 0) {
-                const gameState = {
-                    players: players,
-                    currentPlayerIndex: currentPlayerIndex,
-                    diceRollCount: diceRollCount,
-                    difficultyLevel: difficultyLevel
-                };
-                localStorage.setItem('garmentMonopolySave', JSON.stringify(gameState));
-                console.log("遊戲已自動儲存。");
-            }
-        }
-
-        function checkSavedGame() {
-            const savedGame = localStorage.getItem('garmentMonopolySave');
-            if (savedGame) {
-                document.getElementById('setup-screen').classList.remove('flex');
-                document.getElementById('setup-screen').classList.add('hidden');
-                showModal("繼續遊戲？", "偵測到上次的遊戲存檔。您要繼續還是開始新遊戲？", [
-                    { text: "繼續", className: 'bg-green-600', action: () => {
-                        modal.classList.add('hidden');
-                        startGame(0, '', JSON.parse(savedGame));
-                    }},
-                    { text: "新遊戲", className: 'bg-red-600', action: () => {
-                        localStorage.removeItem('garmentMonopolySave');
-                        modal.classList.add('hidden');
-                        setupScreen.classList.remove('hidden');
-                        setupScreen.classList.add('flex');
-                    }}
-                ], { noCloseButton: true });
-            } else {
-                setupScreen.classList.remove('hidden');
-                setupScreen.classList.add('flex');
-            }
-        }
+        // --- Save/Load Game (REMOVED) ---
 
         // --- Fireworks Animation for Win Screen ---
         const fireworksCanvas = document.getElementById('fireworks-canvas');
