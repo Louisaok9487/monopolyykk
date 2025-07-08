@@ -100,17 +100,13 @@
             border-left: 1px solid #4a5568;
         }
         
-        /* New container for text on side properties to allow vertical centering */
+        /* Container for text on side properties to allow vertical centering */
         .side-property .property-details {
             display: flex;
             flex-direction: column;
             justify-content: center; /* Vertically center content */
             flex: 1; /* Take up remaining space */
         }
-        .side-property .property-details .price {
-             background-color: transparent; /* Remove dark background for side price */
-        }
-
 
         /* Player token styling */
         .player-token {
@@ -957,9 +953,6 @@
         }
 
         async function evaluateAITrades(player) {
-            // AI does not trade on easy difficulty
-            if (difficultyLevel === 'easy') return;
-
             const aiPlayers = players.filter(p => p.isAI && !p.isBankrupt);
             if (aiPlayers.length === 0) return;
 
